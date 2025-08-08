@@ -12,6 +12,9 @@ export default async (request, context) => {
     let body;
     try { body = await request.json(); } catch {}
     const query = body?.query;
+    const inputs = body?.inputs ?? {};
+    const conversationId = body?.conversation_id;
+    const userId = body?.user ?? 'web-user';
     if (!query || typeof query !== 'string') {
       return new Response(JSON.stringify({ error: '缺少 query 字段' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
@@ -25,9 +28,16 @@ export default async (request, context) => {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${DIFY_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream'
       },
-      body: JSON.stringify({ query, user: 'web-user', response_mode: 'streaming' })
+      body: JSON.stringify({
+        query,
+        inputs,
+        user: userId,
+        response_mode: 'streaming',
+        ...(conversationId ? { conversation_id: conversationId } : {})
+      })
     });
 
     if (!upstream.ok) {

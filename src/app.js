@@ -75,7 +75,7 @@ async function callDifyStreamingAPI(query) {
   const response = await fetch('/.netlify/functions/dify-stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query })
+    body: JSON.stringify({ query, inputs: {}, user: 'web-user' })
   });
 
   if (!response.ok) {
