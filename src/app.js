@@ -179,12 +179,54 @@ async function playSentenceQueue() {
   }
 }
 
+async function ensureAudioUnlocked() {
+  audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+  if (audioContext.state === 'suspended') {
+    try { await audioContext.resume(); } catch {}
+  }
+}
+
+async function requestMicPermission() {
+  if (!navigator.mediaDevices?.getUserMedia) return false;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // 立即停止以释放设备，VAD 内部会再次获取
+    stream.getTracks().forEach(t => t.stop());
+    return true;
+  } catch (e) {
+    console.error('麦克风权限被拒绝或不可用:', e);
+    return false;
+  }
+}
+
 talkButton.addEventListener('click', async () => {
   if (state === 'IDLE' || !vad?.isRunning) {
-    if (!vad) await initializeVAD();
-    await vad.start();
-    talkButton.textContent = '结束对话';
-    statusDiv.textContent = '状态: 空闲 (正在监听)';
+    // 浏览器能力检测
+    if (!navigator.mediaDevices?.getUserMedia) {
+      statusDiv.textContent = '状态: 当前浏览器不支持麦克风接口，请使用最新 Chrome';
+      return;
+    }
+    if (!recognition) {
+      statusDiv.textContent = '状态: 当前浏览器不支持语音识别（SpeechRecognition），请使用最新 Chrome';
+      // 仍可尝试初始化 VAD 以验证权限
+    }
+
+    await ensureAudioUnlocked();
+    const permitted = await requestMicPermission();
+    if (!permitted) {
+      statusDiv.textContent = '状态: 未授予麦克风权限';
+      return;
+    }
+
+    try {
+      if (!vad) await initializeVAD();
+      await vad.start();
+      talkButton.textContent = '结束对话';
+      statusDiv.textContent = '状态: 空闲 (正在监听)';
+    } catch (err) {
+      console.error('VAD 初始化/启动失败:', err);
+      statusDiv.textContent = '状态: 启动录音失败，建议使用最新 Chrome 浏览器';
+    }
   } else {
     try { await vad.pause(); } catch {}
     handleInterrupt();
