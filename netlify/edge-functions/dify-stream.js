@@ -1,8 +1,8 @@
 // Netlify Edge Function - stream proxy for Dify SSE
 
 export default async (request, context) => {
-  const DIFY_BASE_URL = context.env?.DIFY_BASE_URL || 'https://pro.aifunbox.com/v1';
-  const DIFY_API_KEY = context.env?.DIFY_API_KEY;
+  const DIFY_BASE_URL = (typeof Deno !== 'undefined' ? Deno.env.get('DIFY_BASE_URL') : undefined) || context.env?.DIFY_BASE_URL || 'https://pro.aifunbox.com/v1';
+  const DIFY_API_KEY = (typeof Deno !== 'undefined' ? Deno.env.get('DIFY_API_KEY') : undefined) || context.env?.DIFY_API_KEY;
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });

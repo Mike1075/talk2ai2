@@ -1,9 +1,9 @@
 // Netlify Edge Function - Azure TTS proxy
 
 export default async (request, context) => {
-  const AZURE_SPEECH_KEY = context.env?.AZURE_SPEECH_KEY;
-  const AZURE_SPEECH_REGION = context.env?.AZURE_SPEECH_REGION || 'westus3';
-  const VOICE = context.env?.AZURE_SPEECH_VOICE || 'zh-CN-Xiaochen:DragonHDFlashLatestNeural';
+  const AZURE_SPEECH_KEY = (typeof Deno !== 'undefined' ? Deno.env.get('AZURE_SPEECH_KEY') : undefined) || context.env?.AZURE_SPEECH_KEY;
+  const AZURE_SPEECH_REGION = (typeof Deno !== 'undefined' ? Deno.env.get('AZURE_SPEECH_REGION') : undefined) || context.env?.AZURE_SPEECH_REGION || 'westus3';
+  const VOICE = (typeof Deno !== 'undefined' ? Deno.env.get('AZURE_SPEECH_VOICE') : undefined) || context.env?.AZURE_SPEECH_VOICE || 'zh-CN-Xiaochen:DragonHDFlashLatestNeural';
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
