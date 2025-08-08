@@ -78,6 +78,25 @@ async function callDifyStreamingAPI(query) {
     body: JSON.stringify({ query })
   });
 
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    console.error('Dify 代理失败:', response.status, errText);
+    aiResponseDiv.textContent = 'AI说: [请求失败] ' + errText;
+    state = 'IDLE';
+    statusDiv.textContent = '状态: 空闲';
+    return;
+  }
+
+  const ctype = response.headers.get('content-type') || '';
+  if (!ctype.includes('text/event-stream')) {
+    const text = await response.text().catch(() => '');
+    console.warn('非 SSE 响应:', ctype, text);
+    aiResponseDiv.textContent = 'AI说: [非流式响应] ' + text;
+    state = 'IDLE';
+    statusDiv.textContent = '状态: 空闲';
+    return;
+  }
+
   if (!response.body) {
     aiResponseDiv.textContent += '\n[错误] 无法建立流式连接';
     return;
