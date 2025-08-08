@@ -16,7 +16,11 @@ let textBuffer = '';
 let vad;
 
 // Browser STT
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const SpeechRecognition = (() => {
+  // 一些 macOS + iPhone 连续互通可能导致权限路由到 iPhone 麦克风，强制使用本机浏览器实现
+  // 仍旧落回标准对象
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+})();
 const recognition = SpeechRecognition ? new SpeechRecognition() : null;
 if (recognition) {
   recognition.lang = 'zh-CN';
@@ -225,7 +229,15 @@ talkButton.addEventListener('click', async () => {
       statusDiv.textContent = '状态: 空闲 (正在监听)';
     } catch (err) {
       console.error('VAD 初始化/启动失败:', err);
-      statusDiv.textContent = '状态: 启动录音失败，建议使用最新 Chrome 浏览器';
+      // Fallback：不依赖 VAD，直接开始 STT 流程，保证可用
+      if (recognition) {
+        state = 'LISTENING';
+        statusDiv.textContent = '状态: 聆听中...(简化模式)';
+        try { recognition.start(); } catch {}
+        talkButton.textContent = '结束对话';
+      } else {
+        statusDiv.textContent = '状态: 启动录音失败，建议使用最新 Chrome 浏览器';
+      }
     }
   } else {
     try { await vad.pause(); } catch {}

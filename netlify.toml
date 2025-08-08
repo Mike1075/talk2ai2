@@ -16,4 +16,12 @@
   to = "/.netlify/functions/:splat"
   status = 200
 
+# 为 VAD / onnxruntime-web 启用跨源隔离（SharedArrayBuffer 等能力）
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "require-corp"
+    Cross-Origin-Resource-Policy = "same-origin"
+
 
