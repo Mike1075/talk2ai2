@@ -183,13 +183,14 @@ async function playSentenceQueue() {
   }
   isPlaying = true;
   const sentence = sentenceQueue.shift();
+  const cleanSentence = sanitizeForTTS(sentence);
 
   try {
     // 调用后端 Azure TTS 合成句子
     const ttsResp = await fetch('/.netlify/functions/azure-tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: sentence })
+      body: JSON.stringify({ text: cleanSentence })
     });
     if (!ttsResp.ok) {
       const text = await ttsResp.text().catch(() => '');
@@ -239,6 +240,19 @@ async function playSentenceQueue() {
     console.error(err);
     isPlaying = false;
   }
+}
+
+// 过滤表情符号与不可读字符，避免被 TTS 读出来
+function sanitizeForTTS(text) {
+  if (!text) return '';
+  // 移除常见 Emoji、区域旗帜、肤色修饰符、变体选择符、ZWJ 组合符
+  const emojiRegex = /[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1F5FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE0E}\u{FE0F}\u{200D}\u{1F3FB}-\u{1F3FF}]/gu;
+  let out = text.replace(emojiRegex, '');
+  // 去掉多余 Markdown 修饰符，避免读出符号
+  out = out.replace(/[\*`_#>\[\]]+/g, ' ');
+  // 折叠空白
+  out = out.replace(/\s{2,}/g, ' ').trim();
+  return out;
 }
 
 async function ensureAudioUnlocked() {
