@@ -11,6 +11,10 @@
   function = "azure-tts"
   path = "/.netlify/functions/azure-tts"
 
+[[edge_functions]]
+  function = "azure-voices"
+  path = "/.netlify/functions/azure-voices"
+
 # 明确声明 Edge Functions 使用 Deno 环境变量
 [edge_functions_environment]
   DIFY_API_KEY = "${DIFY_API_KEY}"
