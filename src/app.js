@@ -60,8 +60,16 @@ async function initializeVAD() {
 
 function handleInterrupt() {
   if (currentAISpeechSource) {
-    try { currentAISpeechSource.stop(); } catch {}
-    currentAISpeechSource.disconnect();
+    // 兼容 WebAudio BufferSource 与 <audio> 标签两种播放源
+    try {
+      if (typeof currentAISpeechSource.stop === 'function') {
+        currentAISpeechSource.stop();
+        if (typeof currentAISpeechSource.disconnect === 'function') currentAISpeechSource.disconnect();
+      } else if (typeof currentAISpeechSource.pause === 'function') {
+        currentAISpeechSource.pause();
+        currentAISpeechSource.src = '';
+      }
+    } catch {}
     currentAISpeechSource = null;
   }
   sentenceQueue = [];
@@ -183,19 +191,50 @@ async function playSentenceQueue() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: sentence })
     });
-    if (!ttsResp.ok) throw new Error('TTS 请求失败');
+    if (!ttsResp.ok) {
+      const text = await ttsResp.text().catch(() => '');
+      aiResponseDiv.textContent += `\n[TTS错误] ${text}`;
+      isPlaying = false;
+      return;
+    }
+
+    const ctype = ttsResp.headers.get('content-type') || '';
     const arrayBuffer = await ttsResp.arrayBuffer();
-    const buffer = await audioContext.decodeAudioData(arrayBuffer);
-    if (state !== 'SPEAKING') return; // 被打断
-    const source = audioContext.createBufferSource();
-    source.buffer = buffer;
-    source.connect(audioContext.destination);
-    source.start(0);
-    currentAISpeechSource = source;
-    source.onended = () => {
-      currentAISpeechSource = null;
-      playSentenceQueue();
-    };
+    if (ctype.includes('audio')) {
+      try {
+        const buffer = await audioContext.decodeAudioData(arrayBuffer);
+        if (state !== 'SPEAKING') return; // 被打断
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+        currentAISpeechSource = source;
+        source.onended = () => {
+          currentAISpeechSource = null;
+          playSentenceQueue();
+        };
+      } catch (e) {
+        // 解码失败，降级使用 <audio> 播放
+        const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        currentAISpeechSource = audio;
+        audio.onended = () => {
+          URL.revokeObjectURL(url);
+          currentAISpeechSource = null;
+          playSentenceQueue();
+        };
+        try { await audio.play(); } catch (err) {
+          aiResponseDiv.textContent += `\n[TTS播放失败] ${String(err)}`;
+          isPlaying = false;
+        }
+      }
+    } else {
+      // 返回了非音频（通常是错误 JSON）
+      const text = new TextDecoder().decode(arrayBuffer);
+      aiResponseDiv.textContent += `\n[TTS错误-非音频] ${text}`;
+      isPlaying = false;
+    }
   } catch (err) {
     console.error(err);
     isPlaying = false;
