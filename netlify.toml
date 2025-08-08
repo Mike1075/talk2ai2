@@ -3,14 +3,11 @@
   publish = "dist"
   functions = "netlify/functions"
 
-[edge_functions]
-  directory = "netlify/edge-functions"
-
-[[edge_functions.route]]
+[[edge_functions]]
   function = "dify-stream"
   path = "/.netlify/functions/dify-stream"
 
-[[edge_functions.route]]
+[[edge_functions]]
   function = "azure-tts"
   path = "/.netlify/functions/azure-tts"
 
