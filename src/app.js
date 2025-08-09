@@ -15,7 +15,6 @@ let sentenceQueue = [];
 let isPlaying = false;
 let textBuffer = '';
 let vad;
-let vadIgnoreUntilMs = 0; // 在此时间点之前忽略 VAD 的 onSpeechStart（避免被自播回声误触发）
 
 function isVadRunning() {
   if (!vad) return false;
@@ -61,10 +60,6 @@ async function initializeVAD() {
   audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
   vad = await VAD.create({
     onSpeechStart: () => {
-      if (performance.now() < vadIgnoreUntilMs) {
-        // 忽略短暂的自播回声触发
-        return;
-      }
       // 只在用户说话时触发中断：当处于 SPEAKING 且输入明显高于背景时
       if (state === 'SPEAKING') {
         handleInterrupt();
@@ -153,7 +148,7 @@ async function callDifyStreamingAPI(query) {
   const decoder = new TextDecoder();
   state = 'SPEAKING';
   statusDiv.textContent = '状态: AI正在说话...';
-  vadIgnoreUntilMs = performance.now() + 1200; // 刚进入说话阶段，先忽略约 1.2s 的回声
+  
 
   const sentenceEndings = /[.!?。！？]/;
 
@@ -212,10 +207,6 @@ async function callDifyStreamingAPI(query) {
     sentenceQueue.push(textBuffer.trim());
     textBuffer = '';
     if (!isPlaying) playSentenceQueue();
-  } else {
-    // 没有任何可播放句子，直接恢复监听
-    state = 'IDLE';
-    await ensureVADRunning();
   }
 }
 
@@ -223,8 +214,8 @@ async function playSentenceQueue() {
   if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
   if (sentenceQueue.length === 0) {
     isPlaying = false;
+    // 不再强制自动进入监听，按你的要求保留手动控制
     state = 'IDLE';
-    await ensureVADRunning();
     return;
   }
   isPlaying = true;
@@ -250,7 +241,6 @@ async function playSentenceQueue() {
       aiResponseDiv.textContent += `\n[TTS错误] ${text}`;
       isPlaying = false;
       state = 'IDLE';
-      await ensureVADRunning();
       return;
     }
 
@@ -265,7 +255,7 @@ async function playSentenceQueue() {
         source.connect(audioContext.destination);
         source.start(0);
         currentAISpeechSource = source;
-        vadIgnoreUntilMs = performance.now() + 1200; // 每次开始新句播放，忽略短暂回声
+        
     source.onended = async () => {
       currentAISpeechSource = null;
       // 若队列已空，自动恢复监听
@@ -284,10 +274,7 @@ async function playSentenceQueue() {
         audio.onended = async () => {
           URL.revokeObjectURL(url);
           currentAISpeechSource = null;
-          if (sentenceQueue.length === 0) {
-            state = 'IDLE';
-            await ensureVADRunning();
-          }
+          // 不强制自动监听
           playSentenceQueue();
         };
         try { await audio.play(); } catch (err) {
@@ -301,13 +288,11 @@ async function playSentenceQueue() {
       aiResponseDiv.textContent += `\n[TTS错误-非音频] ${text}`;
       isPlaying = false;
       state = 'IDLE';
-      await ensureVADRunning();
     }
   } catch (err) {
     console.error(err);
     isPlaying = false;
     state = 'IDLE';
-    await ensureVADRunning();
   }
 }
 
