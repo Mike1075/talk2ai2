@@ -15,6 +15,14 @@ let isPlaying = false;
 let textBuffer = '';
 let vad;
 
+function isVadRunning() {
+  if (!vad) return false;
+  if (typeof vad.isRunning === 'function') {
+    try { return !!vad.isRunning(); } catch { return false; }
+  }
+  return !!vad.isRunning;
+}
+
 // Browser STT
 const SpeechRecognition = (() => {
   // 一些 macOS + iPhone 连续互通可能导致权限路由到 iPhone 麦克风，强制使用本机浏览器实现
@@ -70,7 +78,7 @@ async function initializeVAD() {
 async function ensureVADRunning() {
   try {
     if (!vad) await initializeVAD();
-    if (!vad.isRunning) await vad.start();
+    if (!isVadRunning()) await vad.start();
     statusDiv.textContent = '就绪：正在监听';
   } catch (e) {
     console.warn('VAD ensure running failed:', e);
@@ -239,19 +247,28 @@ async function playSentenceQueue() {
         source.connect(audioContext.destination);
         source.start(0);
         currentAISpeechSource = source;
-        source.onended = () => {
-          currentAISpeechSource = null;
-          playSentenceQueue();
-        };
+    source.onended = async () => {
+      currentAISpeechSource = null;
+      // 若队列已空，自动恢复监听
+      if (sentenceQueue.length === 0) {
+        state = 'IDLE';
+        await ensureVADRunning();
+      }
+      playSentenceQueue();
+    };
       } catch (e) {
         // 解码失败，降级使用 <audio> 播放
         const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
         currentAISpeechSource = audio;
-        audio.onended = () => {
+        audio.onended = async () => {
           URL.revokeObjectURL(url);
           currentAISpeechSource = null;
+          if (sentenceQueue.length === 0) {
+            state = 'IDLE';
+            await ensureVADRunning();
+          }
           playSentenceQueue();
         };
         try { await audio.play(); } catch (err) {
@@ -305,7 +322,7 @@ async function requestMicPermission() {
 }
 
 talkButton.addEventListener('click', async () => {
-  if (state === 'IDLE' || !vad?.isRunning) {
+  if (state === 'IDLE' || !isVadRunning()) {
     // 浏览器能力检测
     if (!navigator.mediaDevices?.getUserMedia) {
       statusDiv.textContent = '状态: 当前浏览器不支持麦克风接口，请使用最新 Chrome';
@@ -326,16 +343,16 @@ talkButton.addEventListener('click', async () => {
     try {
       if (!vad) await initializeVAD();
       await vad.start();
-      talkButton.textContent = '结束对话';
-      statusDiv.textContent = '状态: 空闲 (正在监听)';
+      talkButton.textContent = '⏹️';
+      statusDiv.textContent = '就绪：正在监听';
     } catch (err) {
       console.error('VAD 初始化/启动失败:', err);
       // Fallback：不依赖 VAD，直接开始 STT 流程，保证可用
       if (recognition) {
         state = 'LISTENING';
-        statusDiv.textContent = '状态: 聆听中...(简化模式)';
+        statusDiv.textContent = '聆听中...(简化模式)';
         try { recognition.start(); } catch {}
-        talkButton.textContent = '结束对话';
+        talkButton.textContent = '⏹️';
       } else {
         statusDiv.textContent = '状态: 启动录音失败，建议使用最新 Chrome 浏览器';
       }
@@ -344,7 +361,7 @@ talkButton.addEventListener('click', async () => {
     try { await vad.pause(); } catch {}
     handleInterrupt();
     state = 'IDLE';
-    talkButton.textContent = '开始对话';
+    talkButton.textContent = '🎙️';
     statusDiv.textContent = '状态: 已停止';
   }
 });
