@@ -27,7 +27,9 @@ if (recognition) {
   recognition.interimResults = false;
   recognition.onresult = (event) => {
     const userInput = event.results[0][0].transcript;
-    transcriptDiv.textContent = `用户说: ${userInput}`;
+    if (transcriptDiv) {
+      transcriptDiv.textContent = `用户说: ${userInput}`;
+    }
     state = 'THINKING';
     statusDiv.textContent = '状态: 思考中...';
   // 用户说完后，立即清空未完成播放的队列，避免上一轮残句影响
