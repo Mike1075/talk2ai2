@@ -139,6 +139,8 @@ async function callDifyStreamingAPI(query) {
 
   if (!response.body) {
     aiResponseDiv.textContent += '\n[错误] 无法建立流式连接';
+    state = 'IDLE';
+    await ensureVADRunning();
     return;
   }
 
@@ -204,6 +206,10 @@ async function callDifyStreamingAPI(query) {
     sentenceQueue.push(textBuffer.trim());
     textBuffer = '';
     if (!isPlaying) playSentenceQueue();
+  } else {
+    // 没有任何可播放句子，直接恢复监听
+    state = 'IDLE';
+    await ensureVADRunning();
   }
 }
 
@@ -237,6 +243,8 @@ async function playSentenceQueue() {
       const text = await ttsResp.text().catch(() => '');
       aiResponseDiv.textContent += `\n[TTS错误] ${text}`;
       isPlaying = false;
+      state = 'IDLE';
+      await ensureVADRunning();
       return;
     }
 
@@ -285,10 +293,14 @@ async function playSentenceQueue() {
       const text = new TextDecoder().decode(arrayBuffer);
       aiResponseDiv.textContent += `\n[TTS错误-非音频] ${text}`;
       isPlaying = false;
+      state = 'IDLE';
+      await ensureVADRunning();
     }
   } catch (err) {
     console.error(err);
     isPlaying = false;
+    state = 'IDLE';
+    await ensureVADRunning();
   }
 }
 
