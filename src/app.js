@@ -30,6 +30,13 @@ if (recognition) {
     transcriptDiv.textContent = `用户说: ${userInput}`;
     state = 'THINKING';
     statusDiv.textContent = '状态: 思考中...';
+  // 用户说完后，立即清空未完成播放的队列，避免上一轮残句影响
+  sentenceQueue = [];
+  isPlaying = false;
+  if (currentAISpeechSource) {
+    try { currentAISpeechSource.stop?.(); currentAISpeechSource.pause?.(); } catch {}
+    currentAISpeechSource = null;
+  }
     callDifyStreamingAPI(userInput);
   };
   recognition.onerror = (e) => {
@@ -73,6 +80,7 @@ function handleInterrupt() {
     currentAISpeechSource = null;
   }
   sentenceQueue = [];
+  // 保持 isPlaying 状态，让新一轮 Dify 到来时仍能继续队列逻辑
   isPlaying = false;
 }
 
@@ -121,6 +129,10 @@ async function callDifyStreamingAPI(query) {
     if (!text) return;
     aiResponseDiv.textContent += text;
     textBuffer += text;
+    // 若此前被中断，且这是新一轮 AI 输出，确保播放循环被恢复
+    if (!isPlaying && state === 'SPEAKING' && sentenceQueue.length === 0) {
+      // 不做任何事，等待句子切分触发 playSentenceQueue()
+    }
     if (sentenceEndings.test(textBuffer)) {
       const pieces = textBuffer.split(/(?<=[.!?。！？])/);
       textBuffer = '';
@@ -183,7 +195,14 @@ async function playSentenceQueue() {
   }
   isPlaying = true;
   const sentence = sentenceQueue.shift();
+  await ensureAudioUnlocked();
+  if (!sentence || !sentence.trim()) {
+    return playSentenceQueue();
+  }
   const cleanSentence = sanitizeForTTS(sentence);
+  if (!cleanSentence) {
+    return playSentenceQueue();
+  }
 
   try {
     // 调用后端 Azure TTS 合成句子
