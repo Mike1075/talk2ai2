@@ -108,7 +108,8 @@ function handleInterrupt() {
 }
 
 async function callDifyStreamingAPI(query) {
-  appendAIMessage('Shirley说：');
+  // 新一轮响应开始，插入一条空的 AI 消息，占位后续流式内容
+  appendAIMessage('');
   textBuffer = '';
 
   const response = await fetch('/.netlify/functions/dify-stream', {
@@ -224,9 +225,6 @@ async function playSentenceQueue() {
   if (!cleanSentence) {
     return playSentenceQueue();
   }
-
-  // 同步更新到最后一条 AI 消息（便于持久化显示）
-  updateLastAIMessage((messagesEl?.querySelector('.msg.ai:last-of-type')?.textContent || '') + cleanSentence);
 
   try {
     // 调用后端 Azure TTS 合成句子
