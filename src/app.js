@@ -60,6 +60,7 @@ async function initializeVAD() {
   audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
   vad = await VAD.create({
     onSpeechStart: () => {
+      // 只在用户说话时触发中断：当处于 SPEAKING 且输入明显高于背景时
       if (state === 'SPEAKING') {
         handleInterrupt();
       }
@@ -316,7 +317,13 @@ async function ensureAudioUnlocked() {
 async function requestMicPermission() {
   if (!navigator.mediaDevices?.getUserMedia) return false;
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    });
     // 立即停止以释放设备，VAD 内部会再次获取
     stream.getTracks().forEach(t => t.stop());
     return true;
