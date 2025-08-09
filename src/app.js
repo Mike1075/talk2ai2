@@ -5,6 +5,7 @@ const talkButton = document.getElementById('talkButton');
 const statusDiv = document.getElementById('status');
 const transcriptDiv = document.getElementById('transcript');
 const aiResponseDiv = document.getElementById('aiResponse');
+const messagesEl = document.getElementById('messages');
 
 // State
 let state = 'IDLE'; // IDLE, LISTENING, THINKING, SPEAKING
@@ -38,6 +39,7 @@ if (recognition) {
     if (transcriptDiv) {
       transcriptDiv.textContent = `用户说: ${userInput}`;
     }
+    appendUserMessage(userInput);
     state = 'THINKING';
     statusDiv.textContent = '状态: 思考中...';
   // 用户说完后，立即清空未完成播放的队列，避免上一轮残句影响
@@ -105,7 +107,7 @@ function handleInterrupt() {
 }
 
 async function callDifyStreamingAPI(query) {
-  aiResponseDiv.textContent = 'AI说: ';
+  appendAIMessage('Shirley说：');
   textBuffer = '';
 
   const response = await fetch('/.netlify/functions/dify-stream', {
@@ -147,7 +149,7 @@ async function callDifyStreamingAPI(query) {
 
   const handleText = (text) => {
     if (!text) return;
-    aiResponseDiv.textContent += text;
+    appendToLastAIMessage(text);
     textBuffer += text;
     // 若此前被中断，且这是新一轮 AI 输出，确保播放循环被恢复
     if (!isPlaying && state === 'SPEAKING' && sentenceQueue.length === 0) {
@@ -221,6 +223,9 @@ async function playSentenceQueue() {
   if (!cleanSentence) {
     return playSentenceQueue();
   }
+
+  // 同步更新到最后一条 AI 消息（便于持久化显示）
+  updateLastAIMessage((messagesEl?.querySelector('.msg.ai:last-of-type')?.textContent || '') + cleanSentence);
 
   try {
     // 调用后端 Azure TTS 合成句子
@@ -320,6 +325,82 @@ async function requestMicPermission() {
     return false;
   }
 }
+
+// --- 聊天渲染 + 本地存储 ---
+function scrollToBottom() {
+  if (!messagesEl) return;
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function saveHistory() {
+  if (!messagesEl) return;
+  const data = Array.from(messagesEl.querySelectorAll('.msg')).map(div => ({
+    role: div.classList.contains('user') ? 'user' : 'ai',
+    content: div.textContent || ''
+  }));
+  try { localStorage.setItem('talk2ai_history', JSON.stringify(data)); } catch {}
+}
+
+function loadHistory() {
+  if (!messagesEl) return;
+  const raw = localStorage.getItem('talk2ai_history');
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    messagesEl.innerHTML = '';
+    for (const m of data) {
+      const div = document.createElement('div');
+      div.className = `msg ${m.role === 'user' ? 'user' : 'ai'}`;
+      div.textContent = m.content || '';
+      messagesEl.appendChild(div);
+    }
+    scrollToBottom();
+  } catch {}
+}
+
+function appendUserMessage(text) {
+  if (!messagesEl || !text) return;
+  const div = document.createElement('div');
+  div.className = 'msg user';
+  div.textContent = text;
+  messagesEl.appendChild(div);
+  saveHistory();
+  scrollToBottom();
+}
+
+function appendAIMessage(initialText) {
+  if (!messagesEl) return;
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.textContent = initialText || '';
+  messagesEl.appendChild(div);
+  saveHistory();
+  scrollToBottom();
+}
+
+function appendToLastAIMessage(text) {
+  if (!messagesEl) return;
+  let last = messagesEl.querySelector('.msg.ai:last-of-type');
+  if (!last) {
+    appendAIMessage('');
+    last = messagesEl.querySelector('.msg.ai:last-of-type');
+  }
+  last.textContent += text;
+  saveHistory();
+  scrollToBottom();
+}
+
+function updateLastAIMessage(text) {
+  if (!messagesEl) return;
+  const last = messagesEl.querySelector('.msg.ai:last-of-type');
+  if (last) {
+    last.textContent = text;
+    saveHistory();
+  }
+}
+
+// 页面加载时恢复历史
+loadHistory();
 
 talkButton.addEventListener('click', async () => {
   if (state === 'IDLE' || !isVadRunning()) {

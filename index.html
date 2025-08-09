@@ -20,16 +20,21 @@
       .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
       .footer { margin-top: 16px; opacity: .6; font-size: 12px; }
       a { color: #8fb3ff; }
+      .chat { height: 420px; overflow: hidden; }
+      .messages { height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 6px; }
+      .msg { max-width: 90%; padding: 10px 12px; border-radius: 12px; line-height: 1.6; font-size: 15px; white-space: pre-wrap; }
+      .ai { align-self: flex-start; background: #0f1832; border: 1px solid #1c2856; }
+      .user { align-self: flex-end; background: #21325b; border: 1px solid #2b4177; }
+      .empty { opacity: .5; font-size: 14px; text-align: center; margin-top: 16px; }
     </style>
   </head>
   <body>
     <div class="container">
       <h1>PFA保险金牌教练Shirley的语音互动测试</h1>
       <div class="card" style="padding-bottom: 90px; position: relative;">
-        <div class="grid">
-          <div>
-            <div class="label">Shirley说：</div>
-            <div id="aiResponse" class="panel">（等待回应）</div>
+        <div class="chat" id="chat">
+          <div id="messages" class="messages">
+            <div class="empty">（等待开始对话）</div>
           </div>
         </div>
         <div class="footer">提示：点击下方麦克风开始说话；说话时可直接打断正在播放的语音。</div>
