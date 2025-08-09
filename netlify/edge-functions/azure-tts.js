@@ -15,7 +15,7 @@ export default async (request, context) => {
     if (!AZURE_SPEECH_KEY) {
       return new Response(JSON.stringify({ error: '未配置 AZURE_SPEECH_KEY' }), { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
-    const { text } = await request.json();
+    const { text, voice } = await request.json();
     if (!text || typeof text !== 'string') {
       return new Response(JSON.stringify({ error: '缺少 text 字段' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
@@ -38,8 +38,9 @@ export default async (request, context) => {
       return resp;
     };
 
-    // 首选用户配置的 VOICE，不行则回退到通用声音
-    let upstream = await synthesize(VOICE);
+    // 优先使用前端传入 voice，其次环境变量 VOICE
+    const primaryVoice = voice || VOICE;
+    let upstream = await synthesize(primaryVoice);
     if (!upstream.ok || !upstream.body) {
       const primaryText = await upstream.text().catch(() => '');
       // 回退到通用可用的声音
@@ -48,7 +49,7 @@ export default async (request, context) => {
       if (!fallbackResp.ok || !fallbackResp.body) {
         const fallbackText = await fallbackResp.text().catch(() => '');
         return new Response(
-          JSON.stringify({ error: 'Azure TTS 请求失败', detail: primaryText || fallbackText, region: AZURE_SPEECH_REGION, tried: [VOICE, fallbackVoice] }),
+          JSON.stringify({ error: 'Azure TTS 请求失败', detail: primaryText || fallbackText, region: AZURE_SPEECH_REGION, tried: [primaryVoice, fallbackVoice] }),
           { status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
         );
       }

@@ -209,7 +209,7 @@ async function playSentenceQueue() {
     const ttsResp = await fetch('/.netlify/functions/azure-tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: cleanSentence })
+      body: JSON.stringify({ text: cleanSentence, voice: window.__PreferredVoice || undefined })
     });
     if (!ttsResp.ok) {
       const text = await ttsResp.text().catch(() => '');

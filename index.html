@@ -3,17 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Talk2AI 语音助手</title>
+    <title>PFA保险金牌教练Shirley的语音互动测试</title>
     <style>
       body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; margin: 0; padding: 24px; background: #0b1020; color: #eaf2ff; }
       .container { max-width: 860px; margin: 0 auto; }
-      h1 { font-weight: 700; font-size: 28px; margin: 0 0 16px; }
-      .card { background: #121b36; border: 1px solid #233061; border-radius: 16px; padding: 20px; box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
+      h1 { font-weight: 800; font-size: 26px; margin: 0 0 16px; letter-spacing: .5px; }
+      .card { background: #121b36; border: 1px solid #233061; border-radius: 18px; padding: 20px; box-shadow: 0 8px 26px rgba(0,0,0,0.35); }
       .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-      button { background: #3a5bdc; color: #fff; border: none; border-radius: 999px; padding: 12px 18px; font-size: 16px; cursor: pointer; }
+      button { background: #3a5bdc; color: #fff; border: none; border-radius: 12px; padding: 12px 18px; font-size: 16px; cursor: pointer; }
       button:hover { background: #5472ff; }
+      .mic { font-size: 16px; padding: 12px 16px; border-radius: 999px; background: linear-gradient(135deg,#3a5bdc,#7a5cff); box-shadow: 0 6px 14px rgba(83,106,255,.35); }
+      .mic:active { transform: translateY(1px); }
       .status { opacity: .85; font-size: 14px; }
-      .panel { margin-top: 16px; background: #0f1832; border: 1px solid #1c2856; border-radius: 12px; padding: 12px; font-size: 14px; min-height: 42px; white-space: pre-wrap; }
+      .panel { margin-top: 8px; background: #0f1832; border: 1px solid #1c2856; border-radius: 12px; padding: 14px; font-size: 15px; min-height: 80px; white-space: pre-wrap; line-height: 1.6; }
       .label { opacity: .7; font-size: 13px; margin-bottom: 6px; }
       .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
       .footer { margin-top: 16px; opacity: .6; font-size: 12px; }
@@ -22,23 +24,19 @@
   </head>
   <body>
     <div class="container">
-      <h1>Talk2AI 实时语音助手（Dify + VAD + Azure TTS）</h1>
-      <div class="card">
-        <div class="row">
-          <button id="talkButton">开始对话</button>
-          <div id="status" class="status">状态: 空闲</div>
-        </div>
+      <h1>PFA保险金牌教练Shirley的语音互动测试</h1>
+      <div class="card" style="padding-bottom: 90px; position: relative;">
         <div class="grid">
           <div>
-            <div class="label">用户语音识别</div>
-            <div id="transcript" class="panel">（等待输入）</div>
-          </div>
-          <div>
-            <div class="label">AI 文本输出</div>
-            <div id="aiResponse" class="panel">（等待响应）</div>
+            <div class="label">Shirley说：</div>
+            <div id="aiResponse" class="panel">（等待回应）</div>
           </div>
         </div>
-        <div class="footer">提示：首次点击需要浏览器授权麦克风；再次说话时可直接打断 AI 语音播放。</div>
+        <div class="footer">提示：点击下方麦克风开始说话；说话时可直接打断正在播放的语音。</div>
+        <div class="composer" style="position:absolute; left:0; right:0; bottom:0; padding:12px 16px; background:#0d1736; border-top:1px solid #1c2856; display:flex; align-items:center; gap:12px;">
+          <button id="talkButton" class="mic">🎙️ 开始对话</button>
+          <div id="status" class="status">准备就绪</div>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/app.js"></script>
