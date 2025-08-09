@@ -67,6 +67,16 @@ async function initializeVAD() {
   });
 }
 
+async function ensureVADRunning() {
+  try {
+    if (!vad) await initializeVAD();
+    if (!vad.isRunning) await vad.start();
+    statusDiv.textContent = '就绪：正在监听';
+  } catch (e) {
+    console.warn('VAD ensure running failed:', e);
+  }
+}
+
 function handleInterrupt() {
   if (currentAISpeechSource) {
     // 兼容 WebAudio BufferSource 与 <audio> 标签两种播放源
@@ -189,10 +199,8 @@ async function playSentenceQueue() {
   if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
   if (sentenceQueue.length === 0) {
     isPlaying = false;
-    if (state === 'SPEAKING') {
-      state = 'IDLE';
-      statusDiv.textContent = '状态: 空闲';
-    }
+    state = 'IDLE';
+    await ensureVADRunning();
     return;
   }
   isPlaying = true;
